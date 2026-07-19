@@ -19,7 +19,7 @@ jobs:
           git clone --depth 1 git@github.com:mschachner/site.git site
           rm -rf site/fences
           mkdir -p site/fences
-          cp index.html site/fences/
+          cp index.html styles.css fences-engine.js app.js site/fences/
           cd site
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
