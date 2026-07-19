@@ -4,6 +4,8 @@ const { Fences, FencesRules } = require('../fences-engine.js');
 
 const runtimeFiles = ['index.html', 'styles.css', 'fences-engine.js', 'app.js'];
 const html = readFileSync('index.html', 'utf8');
+const styles = readFileSync('styles.css', 'utf8');
+const app = readFileSync('app.js', 'utf8');
 const workflow = readFileSync('.github/workflows/deploy.yml', 'utf8');
 
 assert.match(html, /href="styles\.css"/);
@@ -12,7 +14,9 @@ assert.match(html, /src="app\.js"/);
 assert.ok(html.indexOf('fences-engine.js') < html.indexOf('app.js'));
 assert.ok(runtimeFiles.every(file => workflow.includes(file)), 'deploy workflow must copy every runtime file');
 
-new Function(readFileSync('app.js', 'utf8'));
+assert.match(styles, /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*?\.hit:hover/);
+assert.match(app, /DEGREE_HELPER_DELAY_MS = 400/);
+new Function(app);
 
 const engine = new Fences(2, 2, new Set(), { loops: 1, maxSolutions: 2 });
 while (!engine.done) engine.run(10);
