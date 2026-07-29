@@ -4,7 +4,8 @@ const { Fences, FencesRules } = require('../fences-engine.js');
 const { FencesGen, easySolves, mediumSolves } = require('../fences-gen.js');
 const precomputed = require('../precomputed.js');
 
-const runtimeFiles = ['index.html', 'styles.css', 'fences-engine.js', 'fences-gen.js', 'precomputed.js', 'app.js'];
+const runtimeFiles = ['index.html', 'styles.css', 'fences-engine.js', 'fences-gen.js', 'precomputed.js', 'app.js',
+  'favicon.ico', 'favicon.svg', 'apple-touch-icon.png'];
 const html = readFileSync('index.html', 'utf8');
 const styles = readFileSync('styles.css', 'utf8');
 const app = readFileSync('app.js', 'utf8');
@@ -20,6 +21,9 @@ assert.ok(html.indexOf('fences-engine.js') < html.indexOf('app.js'));
 assert.ok(html.indexOf('precomputed.js') < html.indexOf('app.js'), 'precomputed data must load before the app');
 assert.ok(html.indexOf('fences-engine.js') < html.indexOf('fences-gen.js'), 'the generator needs the engine');
 assert.ok(html.indexOf('fences-gen.js') < html.indexOf('app.js'), 'the generator must load before the app');
+assert.match(html, /rel="icon" href="favicon\.svg"/);
+assert.match(html, /rel="icon" href="favicon\.ico"/);
+assert.match(html, /rel="apple-touch-icon"/);
 assert.match(html, /id="testBtn"/);
 assert.match(html, /id="cluesOnlyBtn"/);
 assert.match(html, /id="genBtn"/);
