@@ -28,10 +28,18 @@ assert.match(html, /id="testBtn"/);
 assert.match(html, /id="cluesOnlyBtn"/);
 assert.match(html, /id="genBtn"/);
 assert.match(html, /id="gDiffSel"/);
+assert.match(html, /id="hintBtn"/);
+assert.match(html, /id="giveUpBtn"/);
+assert.match(html, /id="giveUpDialog"/);
+assert.match(html, /id="dotHelperChk"/);
 assert.ok(runtimeFiles.every(file => workflow.includes(file)), 'deploy workflow must copy every runtime file');
 
 assert.match(styles, /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*?\.hit:hover/);
+assert.match(styles, /\.pdot\.in/);
+assert.match(styles, /\.confetti/);
+assert.match(styles, /\.hintflash/);
 assert.match(app, /DEGREE_HELPER_DELAY_MS = 400/);
+assert.match(app, /launchConfetti/);
 new Function(app);
 new Function(gen);
 
@@ -59,6 +67,49 @@ assert.equal(fenceResult.marks[10], 2);
 const impossibleMarks = new Int8Array(12);
 impossibleMarks[2] = impossibleMarks[3] = impossibleMarks[7] = 1;
 assert.equal(FencesRules.vertexDegreeState(3, 3, 4, new Set(), impossibleMarks).invalid, true);
+
+// ---- the dot helper's rules ----
+// 3x3 board: edges 0..11, cells 0..3, outer region 4
+assert.deepEqual(FencesRules.edgeFaces(3, 3, 0), [4, 0], 'top border edge: outer above, cell 0 below');
+assert.deepEqual(FencesRules.edgeFaces(3, 3, 7), [0, 1], 'center vertical edge splits cells 0 and 1');
+
+{ // matching neighbors forbid their shared edge; a known cell against the
+  // always-outdoors outer region fences its border
+  const E = 12;
+  const dotClues = new Set([E + 0, E + 2]); // cells 0 and 1 indoors
+  const marks = new Int8Array(E), dots = new Int8Array(4);
+  const r = FencesRules.applyDotHelper(3, 3, dotClues, marks, dots);
+  assert.equal(r.marks[7], 2, 'two indoor neighbors exclude the edge between them');
+  for (const e of [0, 1, 6, 8]) assert.equal(r.marks[e], 1, `border edge ${e} must be fenced`);
+  assert.equal(r.changes.length, 5);
+  assert.equal(r.dotChanges.length, 0);
+  assert.equal(marks[7], 0, 'dot helper must not mutate its input');
+}
+{ // crossing an × preserves the side, and the new dot keeps propagating
+  const E = 12;
+  const dotClues = new Set([E + 0]); // cell 0 indoors
+  const marks = new Int8Array(E), dots = new Int8Array(4);
+  marks[2] = 2; // × between cells 0 and 2
+  const r = FencesRules.applyDotHelper(3, 3, dotClues, marks, dots);
+  assert.equal(r.dots[2], 1, 'crossing an × stays indoors');
+  assert.equal(r.marks[4], 1, 'the deduced cell fences its outer border');
+  assert.equal(r.marks[9], 1);
+  assert.equal(dots[2], 0, 'dot helper must not mutate its input dots');
+}
+{ // crossing a fence flips the side, and given dots are never overwritten
+  const E = 12;
+  const dotClues = new Set([E + 0]); // cell 0 indoors
+  const marks = new Int8Array(E), dots = new Int8Array(4);
+  marks[3] = 1; // fence between cells 1 and 3
+  const r = FencesRules.applyDotHelper(3, 3, dotClues, marks, dots, 0);
+  assert.equal(r.marks[0], 0, 'the protected edge stays blank');
+  assert.equal(r.marks[6], 1, 'other borders of the indoor cell are fenced');
+  assert.equal(r.dots[1], 0, 'no deduction crosses an undecided edge');
+  const withDot = new Int8Array(4); withDot[1] = 1; // player: cell 1 indoors
+  const r2 = FencesRules.applyDotHelper(3, 3, dotClues, marks, withDot);
+  assert.equal(r2.dots[3], 2, 'crossing a fence flips indoors to outdoors');
+  assert.equal(r2.marks[5], 2, 'the outdoor cell matches the outer region: no edge');
+}
 
 // every clueless single-loop board up to 8x8 ships finished, and its tallies
 // still have to be what the engine produces today
