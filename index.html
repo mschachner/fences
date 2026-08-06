@@ -97,8 +97,12 @@
         <div class="boardctl">
           <div class="check-options">
             <label class="check-row"><input type="checkbox" id="timerChk" checked> Timer</label>
-            <label class="check-row" title="Automatically applies the two-edges-per-vertex rule"><input type="checkbox" id="degree2Chk"> Degree-2 helper</label>
-            <label class="check-row" id="dotHelperRow" title="Automatically works out inside/outside cells and the edges between them" hidden><input type="checkbox" id="dotHelperChk"> Dot helper</label>
+          </div>
+          <div class="helpers" role="group" aria-labelledby="helpersTitle">
+            <span class="helpers-title" id="helpersTitle">Helpers</span>
+            <label class="helper-row"><input type="checkbox" id="degree2Chk"><span class="helper-name">Degree-2</span><span class="helper-desc">exactly two edges per dot</span></label>
+            <label class="helper-row" id="dotHelperRow" hidden><input type="checkbox" id="dotHelperChk"><span class="helper-name">Dots</span><span class="helper-desc">inside and outside logic</span></label>
+            <label class="helper-row"><input type="checkbox" id="loopHelperChk"><span class="helper-name">Loops</span><span class="helper-desc">blocks closing loops too soon</span></label>
           </div>
           <div class="btn-row" style="margin-top: 10px">
             <button id="undoBtn" class="history-btn" aria-label="Undo" title="Undo (⌘Z)" disabled>

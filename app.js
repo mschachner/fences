@@ -856,6 +856,7 @@
       $('giveUpBtn').disabled = playPhase !== 'run';
       $('degree2Chk').disabled = playPhase !== 'run';
       $('dotHelperChk').disabled = playPhase !== 'run';
+      $('loopHelperChk').disabled = playPhase !== 'run';
       $('dotHelperRow').hidden = !puzzleHasDots();
     }
   }
@@ -871,11 +872,15 @@
   }
   const dotHelperOn = () => $('dotHelperChk').checked && puzzleHasDots();
 
+  const anyHelperOn = () =>
+    $('degree2Chk').checked || $('loopHelperChk').checked || dotHelperOn();
+
   // the enabled helpers run together to a joint fixpoint: each one's marks
-  // can unlock the other, so alternate until neither has anything to add
+  // can unlock another, so alternate until none has anything left to add
   function applyHelpers(action, protectedEdge = -1, protectedCell = -1) {
     if (!playMarks) return;
     const deg2 = $('degree2Chk').checked, dots = dotHelperOn() && !!playDots;
+    const loop = $('loopHelperChk').checked;
     for (;;) {
       let changed = false;
       if (deg2) {
@@ -895,6 +900,14 @@
           changed = true;
         }
       }
+      if (loop) {
+        const result = FencesRules.applyLoopHelper(R, C, L, clues, playMarks, protectedEdge);
+        if (result.changes.length) {
+          playMarks = result.marks;
+          for (const [e, b, a] of result.changes) action.push(['e', e, b, a]);
+          changed = true;
+        }
+      }
       if (!changed) return;
     }
   }
@@ -906,7 +919,7 @@
 
   function scheduleHelpers(action, protectedEdge = -1, protectedCell = -1) {
     cancelHelpers();
-    if (!$('degree2Chk').checked && !dotHelperOn()) return;
+    if (!anyHelperOn()) return;
     helperTimer = setTimeout(() => {
       helperTimer = null;
       if (tab !== 'play' || playPhase !== 'run') return;
@@ -1016,6 +1029,7 @@
     pendingMerge = null;
     $('degree2Chk').checked = false;
     $('dotHelperChk').checked = false;
+    $('loopHelperChk').checked = false;
     playPhase = 'run';
     playT0 = performance.now();
     clearInterval(timerIv);
@@ -1354,6 +1368,7 @@
   }
   $('degree2Chk').addEventListener('change', helperToggled);
   $('dotHelperChk').addEventListener('change', helperToggled);
+  $('loopHelperChk').addEventListener('change', helperToggled);
   $('undoBtn').addEventListener('click', undoPlay);
   $('redoBtn').addEventListener('click', redoPlay);
   $('hintBtn').addEventListener('click', giveHint);

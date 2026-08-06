@@ -32,12 +32,17 @@ assert.match(html, /id="hintBtn"/);
 assert.match(html, /id="giveUpBtn"/);
 assert.match(html, /id="giveUpDialog"/);
 assert.match(html, /id="dotHelperChk"/);
+assert.match(html, /id="loopHelperChk"/);
+assert.match(html, /class="helpers"/);
 assert.ok(runtimeFiles.every(file => workflow.includes(file)), 'deploy workflow must copy every runtime file');
+for (const m of html.match(/class="helper-desc">([^<]*)</g).map(s => s.replace(/^[^>]*>|<$/g, '')))
+  assert.ok(m.trim().split(/\s+/).length <= 5, `helper description "${m}" must stay within five words`);
 
 assert.match(styles, /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*?\.hit:hover/);
 assert.match(styles, /\.pdot\.in/);
 assert.match(styles, /\.confetti/);
 assert.match(styles, /\.hintflash/);
+assert.match(styles, /\.helper-row input\[type="checkbox"\]/, 'helper toggles get their own styling');
 assert.match(app, /DEGREE_HELPER_DELAY_MS = 400/);
 assert.match(app, /launchConfetti/);
 new Function(app);
@@ -109,6 +114,39 @@ assert.deepEqual(FencesRules.edgeFaces(3, 3, 7), [0, 1], 'center vertical edge s
   const r2 = FencesRules.applyDotHelper(3, 3, dotClues, marks, withDot);
   assert.equal(r2.dots[3], 2, 'crossing a fence flips indoors to outdoors');
   assert.equal(r2.marks[5], 2, 'the outdoor cell matches the outer region: no edge');
+}
+
+// ---- the loop helper's rules ----
+// 2x3 board: edges e0:0-1 e1:1-2 e2:3-4 e3:4-5 e4:0-3 e5:1-4 e6:2-5
+{ // closing early strands dots -> ×; the final closure is left alone
+  const marks = new Int8Array(7);
+  marks[4] = marks[2] = 1; // with clue e0: open path 1-0-3-4
+  const r = FencesRules.applyLoopHelper(2, 3, 1, new Set([0]), marks);
+  assert.deepEqual(r.changes, [[5, 0, 2]], 'e5 would close a 4-dot loop with 2 dots stranded');
+  assert.equal(r.marks[5], 2);
+  assert.equal(marks[5], 0, 'loop helper must not mutate its input');
+  const guarded = FencesRules.applyLoopHelper(2, 3, 1, new Set([0]), marks, 5);
+  assert.equal(guarded.changes.length, 0, 'the protected edge stays blank');
+  const full = new Int8Array(7);
+  full[0] = full[1] = full[6] = full[3] = full[2] = 1; // path over all six dots
+  const done = FencesRules.applyLoopHelper(2, 3, 1, new Set(), full);
+  assert.equal(done.changes.length, 0, 'the closure that finishes the loop is never ×-ed');
+}
+// 2x4 board: e0:0-1 e1:1-2 e2:2-3 e3:4-5 e4:5-6 e5:6-7 e6:0-4 e7:1-5 e8:2-6 e9:3-7
+{ // a finished loop counts against the target
+  const marks = new Int8Array(10);
+  marks[0] = marks[6] = marks[3] = marks[7] = 1; // closed loop 0-1-5-4
+  marks[2] = marks[9] = marks[5] = 1;            // open path 2-3-7-6
+  const two = FencesRules.applyLoopHelper(2, 4, 2, new Set(), marks);
+  assert.equal(two.changes.length, 0, 'second loop over the remaining dots is fine');
+  const one = FencesRules.applyLoopHelper(2, 4, 1, new Set(), marks);
+  assert.deepEqual(one.changes, [[8, 0, 2]], 'a second loop is one too many');
+}
+{ // not enough dots left for the loops still owed
+  const marks = new Int8Array(7);
+  marks[0] = marks[4] = marks[2] = 1; // path 1-0-3-4 on the 2x3 board
+  const r = FencesRules.applyLoopHelper(2, 3, 2, new Set(), marks);
+  assert.deepEqual(r.changes, [[5, 0, 2]], 'closing leaves 2 dots for a whole second loop');
 }
 
 // every clueless single-loop board up to 8x8 ships finished, and its tallies

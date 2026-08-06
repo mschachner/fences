@@ -497,6 +497,62 @@ function applyDotHelper(R, C, clues, marks, dots, protectedEdge = -1, protectedC
   return { marks: nextMarks, dots: nextDots, changes, dotChanges };
 }
 
+/* The loop helper's pure logic. A blank edge joining the two ends of one
+   open path would close a loop right now. Closing is premature while it
+   would make finishing with exactly `loops` loops impossible: the count
+   would run past the target, dots would be left over once the last allowed
+   loop closes, or too few dots would remain for the loops still owed (each
+   needs at least 4). Such edges are ×-ed. Only clean simple paths are read;
+   components with a branching dot are left alone, as is the player's work. */
+function applyLoopHelper(R, C, loops, clues, marks, protectedEdge = -1) {
+  const N = R * C, HE = R * (C - 1), E = HE + (R - 1) * C;
+  const endsOf = e => {
+    if (e < HE) { const u = ((e / (C - 1)) | 0) * C + e % (C - 1); return [u, u + 1]; }
+    const k = e - HE, u = ((k / C) | 0) * C + k % C;
+    return [u, u + C];
+  };
+  const isFence = e => clues.has(e) || marks[e] === 1;
+  const deg = new Int8Array(N);
+  const parent = new Int32Array(N);
+  for (let v = 0; v < N; v++) parent[v] = v;
+  const find = v => { while (parent[v] !== v) v = parent[v] = parent[parent[v]]; return v; };
+  for (let e = 0; e < E; e++) {
+    if (!isFence(e)) continue;
+    const [u, v] = endsOf(e);
+    deg[u]++; deg[v]++;
+    parent[find(u)] = find(v);
+  }
+  // per component: dots on it, open ends, and branching (degree > 2)
+  const size = new Int32Array(N), ends = new Int32Array(N);
+  const bad = new Uint8Array(N);
+  for (let v = 0; v < N; v++) {
+    if (!deg[v]) continue;
+    const r = find(v);
+    size[r]++;
+    if (deg[v] === 1) ends[r]++;
+    else if (deg[v] > 2) bad[r] = 1;
+  }
+  let closedLoops = 0, closedDots = 0; // loops the player has already finished
+  for (let v = 0; v < N; v++)
+    if (find(v) === v && size[v] && !ends[v] && !bad[v]) { closedLoops++; closedDots += size[v]; }
+  const nextMarks = Int8Array.from(marks);
+  const changes = [];
+  const left = loops - closedLoops - 1; // loops still owed after one more closes
+  for (let e = 0; e < E; e++) {
+    if (e === protectedEdge || nextMarks[e] !== 0 || clues.has(e)) continue;
+    const [u, v] = endsOf(e);
+    if (deg[u] !== 1 || deg[v] !== 1) continue;
+    const r = find(u);
+    if (find(v) !== r || bad[r] || ends[r] !== 2) continue; // not one clean open path
+    const rem = N - closedDots - size[r]; // dots left for the loops still owed
+    if (left < 0 || (left === 0 ? rem !== 0 : rem < 4 * left)) {
+      nextMarks[e] = 2;
+      changes.push([e, 0, 2]);
+    }
+  }
+  return { marks: nextMarks, changes };
+}
+
 function applyDegree2(R, C, clues, marks, protectedEdge = -1) {
   const nextMarks = Int8Array.from(marks);
   const changes = [];
@@ -519,7 +575,7 @@ function applyDegree2(R, C, clues, marks, protectedEdge = -1) {
   return { marks: nextMarks, changes };
 }
 
-const FencesRules = Object.freeze({ vertexEdges, vertexDegreeState, applyDegree2, edgeFaces, applyDotHelper });
+const FencesRules = Object.freeze({ vertexEdges, vertexDegreeState, applyDegree2, edgeFaces, applyDotHelper, applyLoopHelper });
 globalThis.Fences = Fences;
 globalThis.FencesRules = FencesRules;
 if (typeof module !== 'undefined') module.exports = { Fences, FencesRules };
