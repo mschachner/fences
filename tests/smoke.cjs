@@ -167,6 +167,17 @@ assert.equal(new Fences(6, 6, [], { loops: 4 }).impossible, 'split');
 assert.equal(new Fences(8, 8, [], { loops: 2 }).impossible, null);
 assert.match(app, /impossibleMsg/, 'the app explains rejected loop counts');
 
+// multi-loop tallies must survive the exact-share and cell-quota prunes
+// (counts confirmed against the pre-prune engine's full enumeration)
+{
+  const count = (r, c, l) => { const b = new Fences(r, c, [], { loops: l }); while (!b.done) b.run(200); return b.solutions; };
+  assert.equal(count(4, 4, 2), 2);
+  assert.equal(count(6, 6, 2), 80);
+  assert.equal(count(4, 6, 3), 3);
+  assert.equal(count(4, 4, 4), 1);
+  assert.equal(count(6, 4, 4), 1, 'four 6-dot loops tile 6x4');
+}
+
 // every clueless single-loop board up to 8x8 ships finished, and its tallies
 // still have to be what the engine produces today
 for (let r = 2; r <= 8; r++)
