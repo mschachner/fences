@@ -148,6 +148,24 @@ assert.deepEqual(FencesRules.edgeFaces(3, 3, 7), [0, 1], 'center vertical edge s
   const r = FencesRules.applyLoopHelper(2, 3, 2, new Set(), marks);
   assert.deepEqual(r.changes, [[5, 0, 2]], 'closing leaves 2 dots for a whole second loop');
 }
+// 2x6 board: e0..e4 top, e5..e9 bottom, e10:0-6 .. e15:5-11
+{ // every loop takes exactly N/loops dots, so an undersized close is ×-ed
+  // even when the dots it strands would still feed the loops owed
+  const marks = new Int8Array(16);
+  marks[0] = marks[11] = marks[5] = 1; // open path 0-1-7-6
+  const r = FencesRules.applyLoopHelper(2, 6, 2, new Set(), marks);
+  assert.deepEqual(r.changes, [[10, 0, 2]], 'a 4-dot loop cannot take a 6-dot share');
+  marks[1] = marks[12] = marks[6] = 1; // grown to 0-1-2-8-7-6: a full share
+  const full = FencesRules.applyLoopHelper(2, 6, 2, new Set(), marks);
+  assert.equal(full.changes.length, 0, 'closing an exact share is never ×-ed');
+}
+
+// dots must split into equal even shares, one per loop: 64/3 does not
+// divide, 36/4 leaves odd 9-dot loops, 64/2 = 32 is fine
+assert.equal(new Fences(8, 8, [], { loops: 3 }).impossible, 'split');
+assert.equal(new Fences(6, 6, [], { loops: 4 }).impossible, 'split');
+assert.equal(new Fences(8, 8, [], { loops: 2 }).impossible, null);
+assert.match(app, /impossibleMsg/, 'the app explains rejected loop counts');
 
 // every clueless single-loop board up to 8x8 ships finished, and its tallies
 // still have to be what the engine produces today
